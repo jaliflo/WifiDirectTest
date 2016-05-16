@@ -3,9 +3,13 @@ package com.example.franciscojavier.wifidirecttest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by FRANCISCOJAVIER on 16/05/2016.
@@ -14,13 +18,14 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     private WifiP2pManager mManager;
     private Channel mChannel;
     private MainActivity mActivity;
-    public WifiP2pManager.PeerListListener peerListListener;
+    private WifiP2pManager.PeerListListener peerListListener;
 
-    public WifiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel, MainActivity activity){
+    public WifiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel, MainActivity activity, WifiP2pManager.PeerListListener peerListListener){
         super();
         mManager = manager;
         mChannel = channel;
         mActivity = activity;
+        this.peerListListener = peerListListener;
     }
 
     @Override
