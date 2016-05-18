@@ -65,16 +65,24 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(mReceiver);
     }
 
+    public void isWifiEnabled(boolean isEnabled){
+        if(isEnabled){
+            Toast.makeText(MainActivity.this, "Wi-Fi is enabled", Toast.LENGTH_SHORT).show();
+        }else{
+            Toast.makeText(this, "Wi-Fi is not enabled", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void buscarPeer(View view){
         mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener(){
             @Override
             public void onSuccess(){
-
+                Toast.makeText(MainActivity.this, "Buscando...", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onFailure(int reasonCode){
-
+                Toast.makeText(MainActivity.this, "Fallo de busqueda", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -90,12 +98,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onSuccess() {
-
+                Toast.makeText(MainActivity.this, "Exito en la conexion", Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onFailure(int reason) {
-
+                Toast.makeText(MainActivity.this, "Conexion fallida", Toast.LENGTH_SHORT).show();
             }
         });
     }
