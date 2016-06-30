@@ -10,7 +10,13 @@ import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -30,8 +36,12 @@ public class MainActivity extends AppCompatActivity {
         public void onPeersAvailable(WifiP2pDeviceList peersList) {
             peers.clear();
             peers.addAll(peersList.getDeviceList());
-
-
+            ListView listView = (ListView) findViewById(R.id.listView);
+            WiFiPeerListAdapter adapter = (WiFiPeerListAdapter)listView.getAdapter();
+            adapter.notifyDataSetChanged();
+            if(peers.size()==0){
+                Toast.makeText(MainActivity.this, "No se encuentran dispositivos", Toast.LENGTH_SHORT).show();
+            }
         }
     };
 
@@ -41,9 +51,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ListView listView = (ListView) findViewById(R.id.listView);
+        listView.setAdapter(new WiFiPeerListAdapter(this, android.R.layout.simple_list_item_1, peers));
+
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
-        mReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this, peerListListener);
+
 
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
@@ -56,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume(){
         super.onResume();
+        mReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this, peerListListener);
         registerReceiver(mReceiver, mIntentFilter);
     }
 
@@ -73,15 +87,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void buscarPeer(View view){
-        mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener(){
+    public void buscarPeer(View view) {
+       mManager.discoverPeers(mChannel, new WifiP2pManager.ActionListener() {
             @Override
-            public void onSuccess(){
+            public void onSuccess() {
                 Toast.makeText(MainActivity.this, "Buscando...", Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onFailure(int reasonCode){
+            public void onFailure(int reasonCode) {
                 Toast.makeText(MainActivity.this, "Fallo de busqueda", Toast.LENGTH_SHORT).show();
             }
         });
@@ -106,5 +120,32 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Conexion fallida", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private class WiFiPeerListAdapter extends ArrayAdapter<WifiP2pDevice>{
+        private List<WifiP2pDevice> items;
+
+        public WiFiPeerListAdapter(Context context, int textViewResourceId, List<WifiP2pDevice> objects){
+            super(context, textViewResourceId, objects);
+            items = objects;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent){
+            View v = convertView;
+            if(v==null){
+                LayoutInflater vi = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                v = vi.inflate(android.R.layout.simple_list_item_1, null);
+            }
+            WifiP2pDevice device = items.get(position);
+            if(device != null){
+                TextView top = (TextView) v.findViewById(android.R.id.text1);
+                if(top != null){
+                    top.setText(device.deviceName);
+                }
+            }
+
+            return v;
+        }
     }
 }
