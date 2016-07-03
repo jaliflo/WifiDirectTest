@@ -3,6 +3,7 @@ package com.example.franciscojavier.wifidirecttest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
@@ -44,6 +45,13 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
         if(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
             if(mManager != null){
                 mManager.requestPeers(mChannel, peerListListener);
+            }
+        }
+
+        if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
+            NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+            if (networkInfo.isConnected()){
+                Toast.makeText(mActivity.getApplicationContext(), "Conectado", Toast.LENGTH_SHORT).show();
             }
         }
     }

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">WifiDirectTest</string>
     <string name="buscar">Buscar</string>
+    <string name="enviar">Enviar</string>
 </resources>

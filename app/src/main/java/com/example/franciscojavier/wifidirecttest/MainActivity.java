@@ -7,27 +7,40 @@ import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringTokenizer;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener, WifiP2pManager.ConnectionInfoListener{
 
     private WifiP2pManager mManager;
     private WifiP2pManager.Channel mChannel;
     private BroadcastReceiver mReceiver;
     private IntentFilter mIntentFilter;
+    private static boolean server_running = false;
+    private WifiP2pDevice device;
 
     private List peers = new ArrayList();
 
@@ -53,10 +66,16 @@ public class MainActivity extends AppCompatActivity {
 
         ListView listView = (ListView) findViewById(R.id.listView);
         listView.setAdapter(new WiFiPeerListAdapter(this, android.R.layout.simple_list_item_1, peers));
+        listView.setOnItemClickListener(this);
 
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
 
+        Button enviarB = (Button) findViewById(R.id.enviarB);
+        enviarB.setVisibility(View.GONE);
+
+        EditText mensaje = (EditText) findViewById(R.id.mensaje);
+        mensaje.setVisibility(View.GONE);
 
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
@@ -96,15 +115,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(int reasonCode) {
-                Toast.makeText(MainActivity.this, "Fallo de busqueda", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Fallo de busqueda. WiFi desconectado", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    public void connect(){
-        WifiP2pDevice device = (WifiP2pDevice) peers.get(0);
+    public void connect(int pos){
+        final WifiP2pDevice device = (WifiP2pDevice) peers.get(pos);
 
-        WifiP2pConfig config = new WifiP2pConfig();
+        final WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = device.deviceAddress;
         config.wps.setup = WpsInfo.PBC;
 
@@ -112,7 +131,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onSuccess() {
-                Toast.makeText(MainActivity.this, "Exito en la conexion", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Conectando con "+device.deviceAddress, Toast.LENGTH_SHORT).show();
+                Button enviarB = (Button) findViewById(R.id.enviarB);
+                EditText mensaje = (EditText) findViewById(R.id.mensaje);
+                enviarB.setVisibility(View.VISIBLE);
+                mensaje.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -120,6 +143,28 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Conexion fallida", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        connect(position);
+        device = (WifiP2pDevice) peers.get(position);
+    }
+
+    public void enviarMensaje(View view){
+
+    }
+
+    @Override
+    public void onConnectionInfoAvailable(WifiP2pInfo info) {
+
+        ListView listView = (ListView) findViewById(R.id.listView);
+        ListAdapter adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
+
+        if(!server_running){
+            new ServerAsyncTask(this, listView);
+            server_running = true;
+        }
     }
 
     private class WiFiPeerListAdapter extends ArrayAdapter<WifiP2pDevice>{
@@ -146,6 +191,48 @@ public class MainActivity extends AppCompatActivity {
             }
 
             return v;
+        }
+    }
+
+    public static class ServerAsyncTask extends AsyncTask<Void, Void, String>{
+
+        private Context context;
+        private ListView listView;
+
+        public ServerAsyncTask(Context context, View chatLog){
+            this.context = context;
+            listView = (ListView) chatLog;
+        }
+
+        @Override
+        protected String doInBackground(Void... params) {
+            try{
+                ServerSocket serverSocket = new ServerSocket(8888);
+                Socket client = serverSocket.accept();
+
+                InputStream inputStream = client.getInputStream();
+                String mensaje = "";
+                byte buff[] = new byte[1024];
+
+                try{
+                    while ((inputStream.read(buff))!= -1){
+                        mensaje = mensaje + new String(buff, StandardCharsets.UTF_8);
+                    }
+                }catch (IOException e){
+                    return null;
+                }
+
+                return mensaje;
+            }catch (IOException e){
+
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result){
+            ArrayAdapter<String> adapter = (ArrayAdapter<String>) listView.getAdapter();
+            adapter.add(result);
         }
     }
 }
