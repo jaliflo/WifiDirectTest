@@ -24,8 +24,13 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.w3c.dom.Text;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private BroadcastReceiver mReceiver;
     private IntentFilter mIntentFilter;
     private static boolean server_running = false;
-    private WifiP2pDevice device;
+    private static boolean client_running = false;
 
     private List peers = new ArrayList();
 
@@ -71,12 +76,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         mManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         mChannel = mManager.initialize(this, getMainLooper(), null);
 
-        Button enviarB = (Button) findViewById(R.id.enviarB);
-        enviarB.setVisibility(View.GONE);
-
-        EditText mensaje = (EditText) findViewById(R.id.mensaje);
-        mensaje.setVisibility(View.GONE);
-
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
         mIntentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
@@ -88,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     protected void onResume(){
         super.onResume();
-        mReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this, peerListListener);
+        mReceiver = new WifiDirectBroadcastReceiver(mManager, mChannel, this, peerListListener, this);
         registerReceiver(mReceiver, mIntentFilter);
     }
 
@@ -132,10 +131,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             public void onSuccess() {
                 Toast.makeText(MainActivity.this, "Conectando con "+device.deviceAddress, Toast.LENGTH_SHORT).show();
-                Button enviarB = (Button) findViewById(R.id.enviarB);
-                EditText mensaje = (EditText) findViewById(R.id.mensaje);
-                enviarB.setVisibility(View.VISIBLE);
-                mensaje.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -148,22 +143,40 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         connect(position);
-        device = (WifiP2pDevice) peers.get(position);
-    }
+        mManager.createGroup(mChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Toast.makeText(MainActivity.this, "Grupo formado", Toast.LENGTH_SHORT).show();
+            }
 
-    public void enviarMensaje(View view){
-
+            @Override
+            public void onFailure(int reason) {
+                //Toast.makeText(MainActivity.this, "Error", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
-    public void onConnectionInfoAvailable(WifiP2pInfo info) {
+    public void onConnectionInfoAvailable(final WifiP2pInfo info) {
 
-        ListView listView = (ListView) findViewById(R.id.listView);
-        ListAdapter adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
+        TextView textView = (TextView) findViewById(R.id.estatus);
 
-        if(!server_running){
-            new ServerAsyncTask(this, listView);
-            server_running = true;
+        if(info.groupFormed && info.isGroupOwner){
+
+            textView.setText("Esperando...");
+
+            if(!server_running){
+                new ServerAsyncTask(textView).execute();
+                server_running = true;
+            }
+        }else if(info.groupFormed){
+
+            String host = info.groupOwnerAddress.getHostAddress();
+
+            if(!client_running){
+                new ClienAsyncTask(textView, host).execute();
+                client_running = true;
+            }
         }
     }
 
@@ -196,12 +209,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     public static class ServerAsyncTask extends AsyncTask<Void, Void, String>{
 
-        private Context context;
-        private ListView listView;
+        private TextView textView;
 
-        public ServerAsyncTask(Context context, View chatLog){
-            this.context = context;
-            listView = (ListView) chatLog;
+        public ServerAsyncTask(View chatLog){
+            textView = (TextView) chatLog;
         }
 
         @Override
@@ -216,12 +227,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 try{
                     while ((inputStream.read(buff))!= -1){
-                        mensaje = mensaje + new String(buff, StandardCharsets.UTF_8);
+                        mensaje = mensaje + new String(buff);
                     }
                 }catch (IOException e){
                     return null;
                 }
-
+                serverSocket.close();
+                server_running = false;
                 return mensaje;
             }catch (IOException e){
 
@@ -231,8 +243,59 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         protected void onPostExecute(String result){
-            ArrayAdapter<String> adapter = (ArrayAdapter<String>) listView.getAdapter();
-            adapter.add(result);
+            if(result.equals("Envio este mensaje")){
+                textView.setText("Mensaje recibido");
+            }
+        }
+    }
+
+    public static class ClienAsyncTask extends AsyncTask<Void, Void, String>{
+
+        private TextView textView;
+        String host;
+
+        public ClienAsyncTask(View textView, String host){
+            this.textView = (TextView) textView;
+            this.host = host;
+        }
+
+        @Override
+        protected String doInBackground(Void... params) {
+            int port = 8888;
+            Socket socket = new Socket();
+
+            try {
+                socket.bind(null);
+                socket.connect((new InetSocketAddress(host, port)), 500);
+
+                String mensaje = "Envio este mensaje";
+
+                OutputStream outputStream = socket.getOutputStream();
+                outputStream.write(mensaje.getBytes());
+                outputStream.close();
+            }catch (IOException e){
+
+            }
+
+            finally {
+                if (socket !=null){
+                    try {
+                        socket.close();
+                        client_running = false;
+                    }catch (IOException e){
+
+                    }
+                }
+            }
+
+            return "mensaje enviado";
+        }
+
+        @Override
+        protected void onPostExecute(String result){
+            if(result.equals("mensaje enviado")){
+                textView.setText("Mensaje enviado");
+            }
         }
     }
 }

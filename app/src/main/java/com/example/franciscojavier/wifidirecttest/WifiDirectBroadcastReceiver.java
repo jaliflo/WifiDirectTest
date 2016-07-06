@@ -20,13 +20,15 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
     private Channel mChannel;
     private MainActivity mActivity;
     private WifiP2pManager.PeerListListener peerListListener;
+    private WifiP2pManager.ConnectionInfoListener infoListener;
 
-    public WifiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel, MainActivity activity, WifiP2pManager.PeerListListener peerListListener){
+    public WifiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel, MainActivity activity, WifiP2pManager.PeerListListener peerListListener, WifiP2pManager.ConnectionInfoListener infoListener){
         super();
         mManager = manager;
         mChannel = channel;
         mActivity = activity;
         this.peerListListener = peerListListener;
+        this.infoListener = infoListener;
     }
 
     @Override
@@ -51,7 +53,7 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
         if(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)){
             NetworkInfo networkInfo = (NetworkInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
             if (networkInfo.isConnected()){
-                Toast.makeText(mActivity.getApplicationContext(), "Conectado", Toast.LENGTH_SHORT).show();
+                mManager.requestConnectionInfo(mChannel, infoListener);
             }
         }
     }

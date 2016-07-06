@@ -26,19 +26,12 @@
         android:layout_marginTop="50dp"
         android:layout_alignParentEnd="true" />
 
-    <Button
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/enviar"
-        android:id="@+id/enviarB"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true" />
-
-    <EditText
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/mensaje"
+        android:id="@+id/estatus"
         android:layout_alignBottom="@+id/listView"
-        android:layout_alignParentStart="true"
-        android:layout_toStartOf="@+id/enviarB" />
+        android:layout_alignStart="@+id/button"
+        android:layout_alignEnd="@+id/listView" />
+
 </RelativeLayout>
