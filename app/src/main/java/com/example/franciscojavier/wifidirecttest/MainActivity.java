@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             textView.setText("Esperando...");
 
             if(!server_running){
-                new ServerAsyncTask(textView).execute();
+                new ServerAsyncTask(textView, this).execute();
                 server_running = true;
             }
         }else if(info.groupFormed){
@@ -210,9 +210,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public static class ServerAsyncTask extends AsyncTask<Void, Void, String>{
 
         private TextView textView;
+        private Context context;
 
-        public ServerAsyncTask(View chatLog){
+        public ServerAsyncTask(View chatLog, Context context){
             textView = (TextView) chatLog;
+            this.context = context;
         }
 
         @Override
@@ -234,6 +236,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
                 serverSocket.close();
                 server_running = false;
+                System.out.print(mensaje);
                 return mensaje;
             }catch (IOException e){
 
@@ -243,9 +246,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         protected void onPostExecute(String result){
-            if(result.equals("Envio este mensaje")){
-                textView.setText("Mensaje recibido");
-            }
+                textView.setText(result);
         }
     }
 
